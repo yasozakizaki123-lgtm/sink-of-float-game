@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sink or Float Challenge</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 50%, #7dd3fc 100%);
+            touch-action: manipulation;
+        }
+
+        .font-game {
+            font-family: 'Fredoka One', cursive;
+        }
+
+        /* Glass Tank Effects */
+        .glass-tank {
+            background: rgba(255, 255, 255, 0.25);
+            backdrop-filter: blur(4px);
+            border: 4px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.15), inset 0 0 20px rgba(255, 255, 255, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .water {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 75%;
+            background: linear-gradient(180deg, rgba(56, 189, 248, 0.65) 0%, rgba(14, 165, 233, 0.85) 100%);
+            border-top: 3px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+        }
+
+        /* Water Surface Waves Animation */
+        .water-wave {
+            position: absolute;
+            top: -12px;
+            left: 0;
+            width: 200%;
+            height: 24px;
+            background: repeat-x url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0 C150,90 350,-40 500,40 C650,120 900,10 1200,40 L1200,120 L0,120 Z' fill='%2338bdf8' opacity='0.7'%3E%3C/path%3E%3C/svg%3E");
+            animation: wave 6s linear infinite;
+        }
+
+        @keyframes wave {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        /* Bubble Particle Effect */
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: rise 3s infinite ease-in;
+        }
+
+        @keyframes rise {
+            0% { transform: translateY(0) scale(0.5); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-200px) scale(1.2); opacity: 0; }
+        }
+
+        /* Custom Object Shelf Hover Effect */
+        .object-card {
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .object-card:hover {
+            transform: translateY(-6px) scale(1.05);
+        }
+
+        /* Pulse for target drop area */
+        .drop-target {
+            animation: pulse-border 2s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { border-color: rgba(234, 179, 8, 0.8); box-shadow: 0 0 15px rgba(234, 179, 8, 0.5); }
+            50% { border-color: rgba(234, 179, 8, 0.3); box-shadow: 0 0 5px rgba(234, 179, 8, 0.2); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between p-2 sm:p-4 text-slate-800 select-none">
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="w-full max-w-5xl mx-auto flex flex-wrap justify-between items-center bg-white/80 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-lg border border-white/50 mb-3">
+        <div class="flex items-center gap-3">
+            <div class="bg-amber-400 text-white p-2 sm:p-3 rounded-xl shadow-md">
+                <i class="fa-solid fa-flask-vial text-xl sm:text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="font-game text-xl sm:text-3xl text-sky-700 tracking-wide">Sink or Float?</h1>
+                <p class="text-xs sm:text-sm text-slate-500 font-semibold">Science Lab Experiment</p>
+            </div>
+        </div>
+
+        <!-- SCORE & PROGRESS -->
+        <div class="flex items-center gap-3 sm:gap-6 mt-2 sm:mt-0">
+            <div class="bg-sky-100 border border-sky-200 rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 text-center">
+                <span class="block text-[10px] sm:text-xs text-sky-600 font-bold uppercase">Progress</span>
+                <span id="progress-text" class="font-game text-sm sm:text-xl text-sky-800">0 / 8</span>
+            </div>
+            <div class="bg-amber-100 border border-amber-200 rounded-xl px-3 py-1.5 sm:px-4 sm:py-2 text-center">
+                <span class="block text-[10px] sm:text-xs text-amber-600 font-bold uppercase">Score</span>
+                <span id="score-text" class="font-game text-sm sm:text-xl text-amber-700">0 pts</span>
+            </div>
+            <button onclick="resetGame()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 sm:p-3 rounded-xl transition shadow-sm hover:shadow active:scale-95" title="Restart Experiment">
+                <i class="fa-solid fa-rotate-right text-lg"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN EXPERIMENT CONTAINER -->
+    <main class="w-full max-w-5xl mx-auto flex-1 grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch mb-3">
+        
+        <!-- LEFT PANEL: WATER TANK & TESTING AREA -->
+        <section class="md:col-span-7 flex flex-col justify-between bg-white/60 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-white/60 relative min-h-[380px] sm:min-h-[460px]">
+            
+            <!-- Dynamic Banner / Instruction -->
+            <div id="status-banner" class="bg-sky-50 border border-sky-200 rounded-2xl p-3 text-center transition-all duration-300">
+                <h2 id="banner-title" class="font-game text-lg sm:text-xl text-sky-800">Step 1: Pick an Object</h2>
+                <p id="banner-desc" class="text-xs sm:text-sm text-slate-600">Select an object from the lab shelf below to test in the tank!</p>
+            </div>
+
+            <!-- WATER TANK CONTAINER -->
+            <div class="flex-1 my-3 relative flex items-center justify-center">
+                <div id="tank-glass" class="glass-tank w-full h-full min-h-[240px] sm:min-h-[300px] rounded-2xl border-4 border-white/70 relative shadow-inner">
+                    
+                    <!-- Water Layer -->
+                    <div class="water" id="water-layer">
+                        <div class="water-wave"></div>
+                        <!-- Decorative Water Bubbles -->
+                        <div class="bubble" style="left: 15%; width: 10px; height: 10px; animation-delay: 0s;"></div>
+                        <div class="bubble" style="left: 45%; width: 14px; height: 14px; animation-delay: 1.2s;"></div>
+                        <div class="bubble" style="left: 75%; width: 8px; height: 8px; animation-delay: 0.7s;"></div>
+                    </div>
+
+                    <!-- Water Level Marker -->
+                    <div class="absolute top-[25%] left-2 text-[10px] sm:text-xs font-bold text-sky-700/60 flex items-center gap-1">
+                        <i class="fa-solid fa-water"></i> Water Surface
+                    </div>
+
+                    <!-- Drop Target Zone Indicator -->
+                    <div id="drop-zone" class="hidden absolute top-3 left-1/2 -translate-x-1/2 w-48 h-20 border-2 border-dashed border-amber-400 rounded-xl flex flex-col items-center justify-center text-amber-600 bg-amber-400/10 drop-target pointer-events-none">
+                        <i class="fa-solid fa-arrow-down text-xl animate-bounce"></i>
+                        <span class="font-game text-xs">Drop Here!</span>
+                    </div>
+
+                    <!-- Animated Active Object Inside Tank -->
+                    <div id="active-object" class="absolute top-2 left-1/2 -translate-x-1/2 transition-all duration-1000 ease-in-out opacity-0 z-20 flex flex-col items-center">
+                        <div id="active-obj-icon" class="text-4xl sm:text-5xl filter drop-shadow-md transform transition-transform"></div>
+                        <span id="active-obj-name" class="font-game text-xs sm:text-sm bg-slate-800/80 text-white px-2 py-0.5 rounded-full mt-1 opacity-0 transition-opacity"></span>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- PREDICTION CONTROL MODAL / OVERLAY (Triggers after object selected) -->
+            <div id="prediction-panel" class="hidden bg-amber-500 text-white rounded-2xl p-4 shadow-xl border-2 border-amber-300 transform transition-all animate-fade-in">
+                <div class="text-center mb-3">
+                    <span class="text-xs uppercase tracking-widest text-amber-100 font-bold">Make Your Prediction</span>
+                    <h3 id="prediction-question" class="font-game text-lg sm:text-xl">Will the Coin Sink or Float?</h3>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="makePrediction('float')" class="bg-emerald-500 hover:bg-emerald-600 text-white font-game py-3 px-4 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition flex items-center justify-center gap-2 text-base sm:text-lg">
+                        <i class="fa-solid fa-up-long"></i> FLOAT
+                    </button>
+                    <button onclick="makePrediction('sink')" class="bg-blue-600 hover:bg-blue-700 text-white font-game py-3 px-4 rounded-xl shadow-lg hover:shadow-xl active:scale-95 transition flex items-center justify-center gap-2 text-base sm:text-lg">
+                        <i class="fa-solid fa-down-long"></i> SINK
+                    </button>
+                </div>
+            </div>
+
+            <!-- SCIENTIFIC EXPLANATION MODAL (Shows after observation) -->
+            <div id="explanation-panel" class="hidden bg-white/95 rounded-2xl p-4 shadow-xl border border-slate-200 animate-fade-in">
+                <div class="flex items-start gap-3">
+                    <div id="explanation-badge" class="p-3 rounded-xl text-white text-2xl flex-shrink-0">
+                        <i id="explanation-icon" class="fa-solid"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex justify-between items-center mb-1">
+                            <h4 id="explanation-title" class="font-game text-lg">Correct Prediction!</h4>
+                            <span id="explanation-tag" class="text-xs font-bold px-2.5 py-0.5 rounded-full">SINK</span>
+                        </div>
+                        <p id="explanation-text" class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-3"></p>
+                        <button onclick="nextObject()" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-game py-2 rounded-xl shadow transition active:scale-95 flex items-center justify-center gap-2 text-sm">
+                            Continue Experiment <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- RIGHT PANEL: SHELF OF OBJECTS & RESULTS TRAY -->
+        <section class="md:col-span-5 flex flex-col justify-between bg-white/60 backdrop-blur-md rounded-3xl p-4 shadow-xl border border-white/60">
+            
+            <!-- CANDIDATE OBJECTS SHELF -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="font-game text-base sm:text-lg text-slate-700">Lab Shelf <span class="text-xs font-normal text-slate-500">(Choose One)</span></h3>
+                    <span class="text-xs bg-slate-200 text-slate-600 font-bold px-2 py-0.5 rounded-full" id="remaining-count">8 Objects Left</span>
+                </div>
+                
+                <div id="shelf-grid" class="grid grid-cols-4 sm:grid-cols-4 gap-2">
+                    <!-- Object Buttons auto-generated by JS -->
+                </div>
+            </div>
+
+            <!-- LIVE RESULTS CATEGORY TRAY (STEP 4 OF ACTIVITY) -->
+            <div class="bg-slate-100/80 rounded-2xl p-3 border border-slate-200/80 flex-1 flex flex-col">
+                <h3 class="font-game text-sm text-slate-700 mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-sky-500"></i> Object Category Tray
+                </h3>
+                
+                <div class="grid grid-cols-2 gap-2 flex-1">
+                    <!-- FLOAT TRAY -->
+                    <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-2 flex flex-col">
+                        <div class="flex items-center justify-between border-b border-emerald-200 pb-1 mb-1">
+                            <span class="font-game text-xs text-emerald-700 flex items-center gap-1">
+                                <i class="fa-solid fa-feather"></i> FLOATS
+                            </span>
+                            <span id="float-count" class="text-[10px] font-bold bg-emerald-200 text-emerald-800 px-1.5 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="float-tray" class="flex-1 flex flex-wrap gap-1 align-content-start overflow-y-auto max-h-[140px] p-1">
+                            <!-- Items placed here dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- SINK TRAY -->
+                    <div class="bg-blue-50/80 border border-blue-200 rounded-xl p-2 flex flex-col">
+                        <div class="flex items-center justify-between border-b border-blue-200 pb-1 mb-1">
+                            <span class="font-game text-xs text-blue-700 flex items-center gap-1">
+                                <i class="fa-solid fa-anchor"></i> SINKS
+                            </span>
+                            <span id="sink-count" class="text-[10px] font-bold bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded-full">0</span>
+                        </div>
+                        <div id="sink-tray" class="flex-1 flex flex-wrap gap-1 align-content-start overflow-y-auto max-h-[140px] p-1">
+                            <!-- Items placed here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- FINAL GAME COMPLETION SUMMARY MODAL -->
+    <div id="summary-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border-4 border-amber-300 transform animate-bounce-in text-center">
+            <div class="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-3 shadow-inner">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h2 class="font-game text-2xl text-slate-800 mb-1">Experiment Complete!</h2>
+            <p class="text-sm text-slate-500 mb-4">You have tested all objects and grouped them by material properties!</p>
+
+            <div class="bg-slate-50 rounded-2xl p-4 border border-slate-200 mb-4 grid grid-cols-2 gap-3 text-center">
+                <div>
+                    <span class="block text-xs text-slate-400 font-bold uppercase">Final Score</span>
+                    <span id="final-score" class="font-game text-2xl text-amber-500">0 pts</span>
+                </div>
+                <div>
+                    <span class="block text-xs text-slate-400 font-bold uppercase">Accuracy</span>
+                    <span id="final-accuracy" class="font-game text-2xl text-sky-500">100%</span>
+                </div>
+            </div>
+
+            <!-- Pattern Conclusion Note -->
+            <div class="bg-sky-50 text-sky-800 text-xs p-3 rounded-xl border border-sky-200 text-left mb-5 leading-relaxed">
+                <strong><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Science Insight:</strong> 
+                Heavy dense materials (metals, solid rubber, glass) sink because they are denser than water. Lightweight materials with trapped air (cork, hollow plastic balls) float easily!
+            </div>
+
+            <button onclick="resetGame()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-game py-3 rounded-xl shadow-lg text-lg transition active:scale-95">
+                Play Again <i class="fa-solid fa-play ml-1"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- AUDIO SYNTHESIZER (No external audio files needed) -->
+    <script>
+        // Web Audio API Sound Generator for games
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+        }
+
+        function playSound(type) {
+            try {
+                initAudio();
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'select') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'splash') {
+                    // Noise splash simulation
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(40, now + 0.3);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'correct') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(523.25, now); // C5
+                    osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                    osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'wrong') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.setValueAtTime(180, now + 0.15);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'complete') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.4);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                }
+            } catch (e) {
+                // Audio fallback if unsupported
+            }
+        }
+    </script>
+
+    <!-- GAME LOGIC & SCIENTIFIC DATA -->
+    <script>
+        // List of objects directly matching Cambridge Primary Activity 4C
+        // Updated icons with custom standalone SVG icons for straw, eraser, cork, and table tennis ball
+        const EXPERIMENT_OBJECTS = [
+            {
+                id: 'coin',
+                name: 'Coin',
+                icon: '<span style="font-size: 1.2em;">🪙</span>',
+                behavior: 'sink',
+                material: 'Metal',
+                explanation: 'A metal coin is dense and heavy for its size. Metal has high density, so it sinks right to the bottom of the water.'
+            },
+            {
+                id: 'cork',
+                name: 'Cork',
+                // Custom standalone wooden cork stopper (tapered cork plug with wood texture details, no bottle)
+                icon: `<svg class="w-10 h-10 inline-block drop-shadow-sm" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Top ellipse of cork -->
+                    <ellipse cx="32" cy="18" rx="18" ry="7" fill="#D97706" stroke="#B45309" stroke-width="2"/>
+                    <!-- Main body of tapered cork stopper -->
+                    <path d="M14 18L18 48C18 52 46 52 46 48L50 18" fill="#F59E0B" stroke="#B45309" stroke-width="2" stroke-linejoin="round"/>
+                    <path d="M18 48C18 52 46 52 46 48" stroke="#B45309" stroke-width="2" fill="none"/>
+                    <!-- Cork texture / speckles -->
+                    <circle cx="26" cy="28" r="1.5" fill="#B45309" opacity="0.6"/>
+                    <circle cx="38" cy="34" r="1.2" fill="#B45309" opacity="0.6"/>
+                    <circle cx="30" cy="40" r="1.5" fill="#B45309" opacity="0.6"/>
+                    <circle cx="34" cy="24" r="1" fill="#B45309" opacity="0.5"/>
+                    <circle cx="22" cy="36" r="1.2" fill="#B45309" opacity="0.5"/>
+                    <circle cx="42" cy="27" r="1.5" fill="#B45309" opacity="0.6"/>
+                </svg>`,
+                behavior: 'float',
+                material: 'Cork Wood',
+                explanation: 'Cork comes from tree bark and contains millions of tiny trapped air pockets. Air makes it much lighter than water, so it floats!'
+            },
+            {
+                id: 'eraser',
+                name: 'Eraser',
+                // Custom standalone pink rubber pencil eraser (pink eraser block with bevel angle)
+                icon: `<svg class="w-10 h-10 inline-block drop-shadow-sm" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 38L42 12L58 24L30 50L14 38Z" fill="#F472B6" stroke="#DB2777" stroke-width="3" stroke-linejoin="round"/>
+                    <path d="M14 38L30 50V54L14 42V38Z" fill="#DB2777"/>
+                    <path d="M30 50L58 24V28L30 54V50Z" fill="#BE185D"/>
+                    <path d="M22 30L44 10" stroke="#FBCFE8" stroke-width="2" stroke-linecap="round"/>
+                </svg>`,
+                behavior: 'sink',
+                material: 'Dense Rubber',
+                explanation: 'Most solid pencil erasers are packed tightly with dense rubber material. Because it is denser than water, it quickly sinks.'
+            },
+            {
+                id: 'metal_straw',
+                name: 'Metal Straw',
+                // Custom standalone metallic bent straw (no cup)
+                icon: `<svg class="w-10 h-10 inline-block drop-shadow-sm" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M48 8L36 20L16 56" stroke="#94A3B8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M48 8L36 20L16 56" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="38" y1="16" x2="34" y2="20" stroke="#64748B" stroke-width="2"/>
+                    <line x1="41" y1="13" x2="37" y2="17" stroke="#64748B" stroke-width="2"/>
+                </svg>`,
+                behavior: 'sink',
+                material: 'Stainless Steel',
+                explanation: 'Even though a straw has a hollow tube, stainless steel metal is far denser than water, causing it to sink.'
+            },
+            {
+                id: 'plastic_straw',
+                name: 'Plastic Straw',
+                // Custom standalone plastic striped bent straw (no cup)
+                icon: `<svg class="w-10 h-10 inline-block drop-shadow-sm" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M48 8L36 20L16 56" stroke="#0EA5E9" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M48 8L36 20L16 56" stroke="#38BDF8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="39" y1="15" x2="35" y2="19" stroke="#FFFFFF" stroke-width="2"/>
+                    <line x1="28" y1="34" x2="24" y2="38" stroke="#FFFFFF" stroke-width="2"/>
+                    <line x1="20" y1="48" x2="16" y2="52" stroke="#FFFFFF" stroke-width="2"/>
+                </svg>`,
+                behavior: 'float',
+                material: 'Lightweight Plastic',
+                explanation: 'Plastic straws are made of lightweight plastic full of air inside. Lightweight plastics float on water.'
+            },
+            {
+                id: 'marble',
+                name: 'Marble',
+                icon: '<span style="font-size: 1.2em;">🔮</span>',
+                behavior: 'sink',
+                material: 'Glass',
+                explanation: 'Marbles are solid glass spheres. Solid glass is denser than water, so gravity pulls it down to the bottom.'
+            },
+            {
+                id: 'metal_spoon',
+                name: 'Metal Spoon',
+                icon: '<span style="font-size: 1.2em;">🥄</span>',
+                behavior: 'sink',
+                material: 'Metal',
+                explanation: 'Metal spoons are solid, heavy metal objects. Metal items almost always sink in water!'
+            },
+            {
+                id: 'ping_pong',
+                name: 'Table Tennis Ball',
+                // Custom standalone white ping pong ball (no racket, no net)
+                icon: `<svg class="w-10 h-10 inline-block drop-shadow-sm" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="24" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="3"/>
+                    <ellipse cx="24" cy="24" rx="8" ry="4" fill="#FFFFFF" transform="rotate(-30 24 24)"/>
+                    <path d="M44 34C40 40 32 44 26 42" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/>
+                </svg>`,
+                behavior: 'float',
+                material: 'Plastic & Air',
+                explanation: 'A table tennis ball is hollow and filled with air! Air gives it high buoyancy, allowing it to pop right back up and float.'
+            }
+        ];
+
+        // Game State Variables
+        let objectsPool = [];
+        let testedObjects = [];
+        let selectedObject = null;
+        let score = 0;
+        let correctPredictions = 0;
+
+        // Initialize Game on Load
+        window.onload = function() {
+            resetGame();
+        };
+
+        function resetGame() {
+            objectsPool = [...EXPERIMENT_OBJECTS];
+            testedObjects = [];
+            selectedObject = null;
+            score = 0;
+            correctPredictions = 0;
+
+            // UI Elements Reset
+            document.getElementById('summary-modal').classList.add('hidden');
+            document.getElementById('explanation-panel').classList.add('hidden');
+            document.getElementById('prediction-panel').classList.add('hidden');
+            document.getElementById('active-object').style.opacity = '0';
+            document.getElementById('float-tray').innerHTML = '';
+            document.getElementById('sink-tray').innerHTML = '';
+            document.getElementById('float-count').innerText = '0';
+            document.getElementById('sink-count').innerText = '0';
+
+            updateHeader();
+            updateBanner('Step 1: Pick an Object', 'Select an object from the lab shelf on the right to test in the tank!');
+            renderShelf();
+        }
+
+        function updateHeader() {
+            document.getElementById('progress-text').innerText = `${testedObjects.length} / ${EXPERIMENT_OBJECTS.length}`;
+            document.getElementById('score-text').innerText = `${score} pts`;
+            document.getElementById('remaining-count').innerText = `${objectsPool.length} Objects Left`;
+        }
+
+        function updateBanner(title, desc) {
+            document.getElementById('banner-title').innerText = title;
+            document.getElementById('banner-desc').innerText = desc;
+        }
+
+        function renderShelf() {
+            const grid = document.getElementById('shelf-grid');
+            grid.innerHTML = '';
+
+            EXPERIMENT_OBJECTS.forEach(obj => {
+                const isTested = testedObjects.some(t => t.id === obj.id);
+                const isSelected = selectedObject && selectedObject.id === obj.id;
+
+                const btn = document.createElement('button');
+                btn.className = `object-card p-3 rounded-2xl flex flex-col items-center justify-center border-2 transition-all ${
+                    isTested 
+                        ? 'bg-slate-200/50 border-slate-300 opacity-40 cursor-not-allowed' 
+                        : isSelected 
+                            ? 'bg-amber-100 border-amber-400 ring-4 ring-amber-300/50 scale-105' 
+                            : 'bg-white border-slate-200 shadow-sm hover:border-sky-300 hover:shadow-md'
+                }`;
+                btn.disabled = isTested || (selectedObject !== null);
+                btn.onclick = () => selectObject(obj);
+
+                btn.innerHTML = `
+                    <span class="text-3xl sm:text-4xl mb-1 ${obj.styleClass || ''}">${obj.icon}</span>
+                    <span class="font-game text-[11px] sm:text-xs text-slate-700 text-center leading-tight">${obj.name}</span>
+                    <span class="text-[9px] font-semibold text-slate-400 mt-0.5">${obj.material}</span>
+                `;
+
+                grid.appendChild(btn);
+            });
+        }
+
+        function selectObject(obj) {
+            playSound('select');
+            selectedObject = obj;
+            renderShelf();
+
+            // Display Prediction Overlay
+            updateBanner(`Testing: ${obj.name}`, `What do you think will happen when we drop the ${obj.name.toLowerCase()} into the water?`);
+            
+            document.getElementById('prediction-question').innerText = `Will the ${obj.name} Sink or Float?`;
+            document.getElementById('prediction-panel').classList.remove('hidden');
+            document.getElementById('explanation-panel').classList.add('hidden');
+            
+            // Show Drop Zone Indicator
+            document.getElementById('drop-zone').classList.remove('hidden');
+        }
+
+        function makePrediction(userGuess) {
+            initAudio();
+            document.getElementById('prediction-panel').classList.add('hidden');
+            document.getElementById('drop-zone').classList.add('hidden');
+
+            const isCorrect = (userGuess === selectedObject.behavior);
+            if (isCorrect) {
+                score += 100;
+                correctPredictions++;
+            }
+
+            updateHeader();
+            animateDrop(userGuess, isCorrect);
+        }
+
+        function animateDrop(userGuess, isCorrect) {
+            const activeObj = document.getElementById('active-object');
+            const iconEl = document.getElementById('active-obj-icon');
+            const nameEl = document.getElementById('active-obj-name');
+            const waterLayer = document.getElementById('water-layer');
+
+            // Setup active object visuals
+            iconEl.innerHTML = selectedObject.icon;
+            nameEl.innerText = selectedObject.name;
+            nameEl.style.opacity = '1';
+
+            // Reset position to top air zone
+            activeObj.style.transition = 'none';
+            activeObj.style.top = '10px';
+            activeObj.style.opacity = '1';
+            activeObj.style.transform = 'translateX(-50%) scale(1.2)';
+
+            // Animate Drop after slight delay
+            setTimeout(() => {
+                playSound('splash');
+                
+                // Water Splash Animation Effect
+                waterLayer.style.transform = 'scaleY(1.03)';
+                setTimeout(() => waterLayer.style.transform = 'scaleY(1)', 300);
+
+                activeObj.style.transition = 'top 1.2s cubic-bezier(0.25, 1, 0.5, 1), transform 1.2s ease';
+
+                if (selectedObject.behavior === 'sink') {
+                    // Sinks to tank bottom
+                    activeObj.style.top = 'calc(100% - 65px)';
+                    activeObj.style.transform = 'translateX(-50%) scale(1) rotate(15deg)';
+                } else {
+                    // Floats at water level (~25% down from top)
+                    activeObj.style.top = '27%';
+                    activeObj.style.transform = 'translateX(-50%) scale(1) rotate(-5deg)';
+                }
+
+                // Show Explanation Modal after drop animation finishes
+                setTimeout(() => {
+                    showExplanation(userGuess, isCorrect);
+                }, 1300);
+
+            }, 400);
+        }
+
+        function showExplanation(userGuess, isCorrect) {
+            playSound(isCorrect ? 'correct' : 'wrong');
+
+            const expPanel = document.getElementById('explanation-panel');
+            const badge = document.getElementById('explanation-badge');
+            const icon = document.getElementById('explanation-icon');
+            const title = document.getElementById('explanation-title');
+            const tag = document.getElementById('explanation-tag');
+            const text = document.getElementById('explanation-text');
+
+            if (isCorrect) {
+                badge.className = 'p-3 rounded-xl text-white text-2xl flex-shrink-0 bg-emerald-500 shadow-md';
+                icon.className = 'fa-solid fa-circle-check';
+                title.innerText = 'Great Prediction!';
+                title.className = 'font-game text-lg text-emerald-700';
+            } else {
+                badge.className = 'p-3 rounded-xl text-white text-2xl flex-shrink-0 bg-amber-500 shadow-md';
+                icon.className = 'fa-solid fa-circle-info';
+                title.innerText = 'Surprise Result!';
+                title.className = 'font-game text-lg text-amber-700';
+            }
+
+            if (selectedObject.behavior === 'sink') {
+                tag.innerText = 'SINKS';
+                tag.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700';
+            } else {
+                tag.innerText = 'FLOATS';
+                tag.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+            }
+
+            text.innerText = selectedObject.explanation;
+            expPanel.classList.remove('hidden');
+
+            // Add object to Category Sorting Tray (Step 4)
+            addToCategoryTray(selectedObject);
+        }
+
+        function addToCategoryTray(obj) {
+            const targetTrayId = obj.behavior === 'float' ? 'float-tray' : 'sink-tray';
+            const countId = obj.behavior === 'float' ? 'float-count' : 'sink-count';
+            const tray = document.getElementById(targetTrayId);
+
+            const badge = document.createElement('div');
+            badge.className = 'bg-white border border-slate-200 rounded-lg px-2 py-1 flex items-center gap-1 shadow-sm text-xs font-semibold animate-fade-in';
+            badge.innerHTML = `<span>${obj.icon}</span> <span>${obj.name}</span>`;
+
+            tray.appendChild(badge);
+
+            const currentCount = parseInt(document.getElementById(countId).innerText);
+            document.getElementById(countId).innerText = currentCount + 1;
+        }
+
+        function nextObject() {
+            playSound('select');
+            
+            // Record tested object
+            testedObjects.push(selectedObject);
+            objectsPool = objectsPool.filter(o => o.id !== selectedObject.id);
+            selectedObject = null;
+
+            // Reset tank view
+            document.getElementById('explanation-panel').classList.add('hidden');
+            document.getElementById('active-object').style.opacity = '0';
+
+            updateHeader();
+            renderShelf();
+
+            if (objectsPool.length > 0) {
+                updateBanner('Pick Next Object', 'Select another object from the shelf to test!');
+            } else {
+                // All objects completed!
+                setTimeout(showFinalSummary, 400);
+            }
+        }
+
+        function showFinalSummary() {
+            playSound('complete');
+            
+            const accuracy = Math.round((correctPredictions / EXPERIMENT_OBJECTS.length) * 100);
+            
+            document.getElementById('final-score').innerText = `${score} pts`;
+            document.getElementById('final-accuracy').innerText = `${accuracy}%`;
+            document.getElementById('summary-modal').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
